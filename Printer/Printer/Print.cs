@@ -11,21 +11,40 @@ namespace Printer
     public delegate void MyDelegate(ref int a);
     public class Print
     {
-        static public int PaperCount { get; set; }
+        static private int paperCount;
+        //static public int PaperCount { get; set; }
         static public bool IsFinished { get; set; }
+
+        static public int PaperCount
+        {
+            get
+            {
+                return paperCount;
+            }
+
+            set
+            {
+                if (value > 0 && value <= 200)
+                {
+                    paperCount = value;
+                }
+                else
+                    Console.WriteLine("incorect Value");
+            }
+        }
+
         static int i = 0;
         static ConsoleKeyInfo k = default(ConsoleKeyInfo);
         static private int printCount;
         static public event MyDelegate OnStartPrinting = null;
+        static public event MyDelegate OnPrinting = null;
         static public event EventDelegate OnOutOfPaper = null;
         static public event EventDelegate OnPause = null;
-        static public void PressKeyPEvent()
+        static public void PressKeyPhundler()
         {
-            
             OnPause();
-           
         }
-        static public void PressKeySEvent()
+        static public void PressKeySHundler(ref int printCount)
         {
             OnStartPrinting.Invoke(ref printCount);
         }
@@ -40,6 +59,21 @@ namespace Printer
             Console.WriteLine("enter the number of paper you want to insert or press Esc key to finish printing");
             if (k.Key != ConsoleKey.Escape)
             {
+                do
+                {
+                    try
+                    {
+                        PaperCount = int.Parse(Console.ReadLine());
+
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        Console.WriteLine("Enter the count of paper you want to insert(Min 1 and Max 200)");
+                        PaperCount = 0;
+
+                    }
+                } while (printCount == 0);
                 PaperCount = int.Parse(Console.ReadLine());
 
 
@@ -54,7 +88,8 @@ namespace Printer
         static public void Pouse()
         {
             Console.WriteLine("Paused");
-            if (PaperCount <= 0)
+            Console.WriteLine("Press 'S' to Start or Escape to Finish printing");
+            k = Console.ReadKey();
             if(k.Key == ConsoleKey.S)
             {
                Start(ref printCount);
@@ -64,7 +99,11 @@ namespace Printer
                 IsFinished = true;
             }
         }
-        static public void OutOfPaperEvent()
+        static public void PrintingHundler(ref int printCount)
+        {
+            OnPrinting(ref printCount);
+        }
+        static public void OutOfPaperHundler()
         {
             OnOutOfPaper();
         }
@@ -75,42 +114,48 @@ namespace Printer
             count--;
             Console.Clear();
             Console.WriteLine($"printing {i} page");
+            Console.WriteLine("Press 'P' to pouse printing");
             Thread.Sleep(200);
             
         }
         static public void Start(ref int count)
         {
-            //int printCount = count;
-            while (k.Key != ConsoleKey.P && k.Key != ConsoleKey.Escape && PaperCount > 0 && count > 0 && IsFinished != true)
+            while (PaperCount > 0 && printCount > 0 && IsFinished != true)
             {
-                while (!Console.KeyAvailable && PaperCount > 0 && count > 0)
+                if(OnPrinting==null)
                 {
-
-                    Console.WriteLine("Press 'P' to pouse printing");
-                    Printing(ref count);
-                    if (Console.KeyAvailable)
+                   OnPrinting += Printing;
+                }
+                PrintingHundler(ref printCount);
+                if (Console.KeyAvailable)
+                {
+                    k = Console.ReadKey();
+                    switch (k.Key)
                     {
-                        switch (k.Key)
-                        {
-                            case ConsoleKey.S:
-                                OnStartPrinting += Start;
-                                PressKeySEvent();
-                                break;
-                            case ConsoleKey.P:
-                                OnPause += Pouse;
-                                PressKeyPEvent();
-                                break;
-                            case ConsoleKey.Escape:
-                                IsFinished = true;
-                                break;
-                            default: continue;
-                        }
+                        case ConsoleKey.P:
+                            OnPause += Pouse;
+                            PressKeyPhundler();
+                            break;
+                        case ConsoleKey.Escape:
+                            IsFinished = true;
+                            Console.WriteLine("interapt by user");
+                            break;
+                        default: continue;
                     }
                 }
             }
+            if (PaperCount <= 0)
+            {
+                OnOutOfPaper += OutOfPaper;
+                OutOfPaperHundler();
+            }
+            if (printCount <=0)
+            {
+                IsFinished = true;
+            }
         }
-           
-        
+
+
 
     }
 }
